@@ -1,0 +1,25 @@
+{
+    "appKeys": {
+        "dummy": 0
+    },
+    "capabilities": [
+        ""
+    ],
+    "companyName": "David Kersten",
+    "longName": "Tutorial",
+    "projectType": "native",
+    "resources": {
+        "media": []
+    },
+    "sdkVersion": "3",
+    "shortName": "Tutorial",
+    "targetPlatforms": [
+        "aplite",
+        "basalt"
+    ],
+    "uuid": "53cc072a-c21e-4ac0-9916-08fda29dbb0d",
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": true
+    }
+}
