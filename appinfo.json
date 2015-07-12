@@ -1,9 +1,10 @@
 {
     "appKeys": {
-        "dummy": 0
+        "KEY_CONDITIONS": 1,
+        "KEY_TEMPERATURE": 0
     },
     "capabilities": [
-        ""
+        "location"
     ],
     "companyName": "David Kersten",
     "longName": "Tutorial",
