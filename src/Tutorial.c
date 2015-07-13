@@ -8,6 +8,19 @@ static TextLayer *s_time_layer,
                  *s_meridiem_layer,
                  *s_weather_layer;
 
+void animate_layer(Layer *layer, GRect *start, GRect *finish, int duration, int delay)
+{
+    //Declare animation
+    PropertyAnimation *anim = property_animation_create_layer_frame(layer, start, finish);
+ 
+    //Set characteristics
+    animation_set_duration((Animation*) anim, duration);
+    animation_set_delay((Animation*) anim, delay);
+ 
+    //Start animation!
+    animation_schedule((Animation*) anim);
+}
+
 static void update_time() {
   // Get a tm structure
   time_t temp = time(NULL);
@@ -98,10 +111,34 @@ static void main_window_unload(Window *window) {
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
-  update_time();
+  int seconds = tick_time->tm_sec;
+  int minutes = tick_time->tm_min;
+  int hours = tick_time->tm_hour;
+	
+	if(seconds == 59) {
+		//Slide offscreen to the right
+		GRect start = GRect(0, 53, 144, 168);
+		GRect finish = GRect(144, 53, 144, 168);
+		animate_layer(text_layer_get_layer(s_time_layer), &start, &finish, 300, 500);
+    if (hours == 11 && minutes == 59) {
+      animate_layer(text_layer_get_layer(s_meridiem_layer), &start, &finish, 300, 500);
+    }
+	}
+	else if(seconds == 0) {
+		//Change the TextLayer text to show the new time!
+		update_time();
+
+		//Slide onscreen from the left
+		GRect start = GRect(-144, 53, 144, 168);
+		GRect finish = GRect(0, 53, 144, 168);
+		animate_layer(text_layer_get_layer(s_time_layer), &start, &finish, 300, 500);
+    if (hours == 12 && minutes == 0) {
+      animate_layer(text_layer_get_layer(s_meridiem_layer), &start, &finish, 300, 500);
+    }
+	}
   
   // Get weather update every 30 minutes
-  if(tick_time->tm_min % 30 == 0) {
+  if(minutes % 30 == 0 && seconds == 1) {
     // Begin dictionary
     DictionaryIterator *iter;
     app_message_outbox_begin(&iter);
@@ -160,20 +197,20 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
 }
 
 static void init() {
-    // Create main Window element and assign to pointer
-    s_main_window = window_create();
+  // Create main Window element and assign to pointer
+  s_main_window = window_create();
     
-    // Set handlers to manage the elements inside the Window
-    window_set_window_handlers(s_main_window, (WindowHandlers) {
-        .load = main_window_load,
-        .unload = main_window_unload
-    });
+  // Set handlers to manage the elements inside the Window
+  window_set_window_handlers(s_main_window, (WindowHandlers) {
+    .load = main_window_load,
+    .unload = main_window_unload
+  });
     
-    // Show the Window on the watch, with animated=true
-    window_stack_push(s_main_window, true);
+  // Show the Window on the watch, with animated=true
+  window_stack_push(s_main_window, true);
     
-    // Register with TickTimerService
-    tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+  // Register with TickTimerService
+  tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
   
   // Register callbacks
   app_message_register_inbox_received(inbox_received_callback);
