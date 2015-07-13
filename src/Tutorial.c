@@ -115,8 +115,8 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   int minutes = tick_time->tm_min;
   int hours = tick_time->tm_hour;
 	
-	if(seconds == 59) {
-		//Slide offscreen to the right
+	if(minutes == 59 && seconds == 59) {
+		// Slide offscreen to the right
 		GRect start = GRect(0, 53, 144, 168);
 		GRect finish = GRect(144, 53, 144, 168);
 		animate_layer(text_layer_get_layer(s_time_layer), &start, &finish, 300, 500);
@@ -124,11 +124,10 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
       animate_layer(text_layer_get_layer(s_meridiem_layer), &start, &finish, 300, 500);
     }
 	}
-	else if(seconds == 0) {
-		//Change the TextLayer text to show the new time!
+	else if(minutes == 0 && seconds == 0) {
 		update_time();
 
-		//Slide onscreen from the left
+		// Slide onscreen from the left
 		GRect start = GRect(-144, 53, 144, 168);
 		GRect finish = GRect(0, 53, 144, 168);
 		animate_layer(text_layer_get_layer(s_time_layer), &start, &finish, 300, 500);
@@ -138,7 +137,7 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 	}
   
   // Get weather update every 30 minutes
-  if(minutes % 30 == 0 && seconds == 1) {
+  if(minutes % 30 == 0 && seconds == 0) {
     // Begin dictionary
     DictionaryIterator *iter;
     app_message_outbox_begin(&iter);
