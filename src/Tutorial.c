@@ -8,47 +8,32 @@ static TextLayer *s_time_layer,
                  *s_meridiem_layer,
                  *s_weather_layer;
 
-static void update_minute(struct tm *tick_time) {
-    // Create a long-lived buffer
-    static char time_buffer[] = "00:00";
+static void update_time() {
+  // Get a tm structure
+  time_t temp = time(NULL);
+  struct tm *current_time = localtime(&temp);
+  
+  // Create a long-lived buffer
+  static char time_buffer[] = "00:00",
+              meridiem_buffer[] = "AM";
     
     // Write the current hours and minutes into the buffer
     if(clock_is_24h_style() == true) {
-        //Use 24h hour format
-        strftime(time_buffer, sizeof(time_buffer), "%H:%M", tick_time);
+      //Use 24h hour format
+      strftime(time_buffer, sizeof(time_buffer), "%H:%M", current_time);
     } else {
-        //Use 12 hour format
-        strftime(time_buffer, sizeof(time_buffer), "%I:%M", tick_time);
-        //Remove leading 0
-        if (time_buffer[0] == '0') {
-            memmove(time_buffer, &time_buffer[1], sizeof(time_buffer) - 1);
-        }
+      //Use 12 hour format
+      strftime(time_buffer, sizeof(time_buffer), "%I:%M", current_time);
+      //Remove leading 0
+      if (time_buffer[0] == '0') {
+        memmove(time_buffer, &time_buffer[1], sizeof(time_buffer) - 1);
+      }
+      //Display AM/PM
+      strftime(meridiem_buffer, sizeof(meridiem_buffer), "%p", current_time);
     }
-    
     // Display this time on the TextLayer
     text_layer_set_text(s_time_layer, time_buffer);
-}
-
-static void update_meridiem(struct tm *tick_time) {
-    // Create a long-lived buffer
-    static char meridiem_buffer[] = "PM";
-    
-    // Write the current hours and minutes into the buffer
-    if(clock_is_24h_style() == false) {
-        //Display AM/PM
-        strftime(meridiem_buffer, sizeof(meridiem_buffer), "%p", tick_time);
-    }
-    
-    // Display this time on the TextLayer
     text_layer_set_text(s_meridiem_layer, meridiem_buffer);
-}
-
-static void update_time() {
-    // Get a tm structure
-    time_t temp = time(NULL);
-    struct tm *current_time = localtime(&temp);
-    update_minute(current_time);
-    update_meridiem(current_time);
 }
 
 static void main_window_load(Window *window) {
@@ -75,7 +60,7 @@ static void main_window_load(Window *window) {
     text_layer_set_text_color(s_meridiem_layer, GColorBlack);
 #endif
     text_layer_set_background_color(s_meridiem_layer, GColorClear);
-    text_layer_set_text(s_meridiem_layer, "PM");
+    text_layer_set_text(s_meridiem_layer, "AM");
     
     // Improve the layout to be more like a watchface
     text_layer_set_font(s_time_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
@@ -112,13 +97,11 @@ static void main_window_unload(Window *window) {
     text_layer_destroy(s_weather_layer);
 }
 
-static void minute_tick_handler(struct tm *tick_time, TimeUnits units_changed) {
-    update_minute(tick_time);
-}
-
-static void hour_tick_handler(struct tm *tick_time, TimeUnits units_changed) {
-    update_meridiem(tick_time);
-    // Get weather on every hour
+static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  update_time();
+  
+  // Get weather update every 30 minutes
+  if(tick_time->tm_min % 30 == 0) {
     // Begin dictionary
     DictionaryIterator *iter;
     app_message_outbox_begin(&iter);
@@ -128,6 +111,7 @@ static void hour_tick_handler(struct tm *tick_time, TimeUnits units_changed) {
  
     // Send the message!
     app_message_outbox_send();
+  }
 }
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
@@ -144,7 +128,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     // Which key was received?
     switch(t->key) {
     case KEY_TEMPERATURE:
-      snprintf(temperature_buffer, sizeof(temperature_buffer), "%dC", (int)t->value->int32);
+      snprintf(temperature_buffer, sizeof(temperature_buffer), "%dºF", (int)t->value->int32);
       break;
     case KEY_CONDITIONS:
       snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", t->value->cstring);
@@ -189,8 +173,7 @@ static void init() {
     window_stack_push(s_main_window, true);
     
     // Register with TickTimerService
-    tick_timer_service_subscribe(MINUTE_UNIT, minute_tick_handler);
-    tick_timer_service_subscribe(HOUR_UNIT, hour_tick_handler);
+    tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
   
   // Register callbacks
   app_message_register_inbox_received(inbox_received_callback);
