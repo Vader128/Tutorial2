@@ -14,8 +14,6 @@ static TextLayer *s_time_layer1,
                  *s_meridiem_layer,
                  *s_weather_layer,
                  *s_date_layer;
-                 //*s_top_day_layer,
-                 //*s_bottom_day_layer;
 
 static GRect *display_layer1,
              *off_right_layer1,
@@ -38,23 +36,77 @@ static GRect *display_layer1,
 //	}
 //}
 
-void on_animation_stopped(Animation *anim, bool finished, void *context)
-{
-    //Free the memory used by the Animation
-    property_animation_destroy((PropertyAnimation*) anim);
+void animation_stopped(Animation *anim, bool finished, void *context) {
+#ifdef PBL_PLATFORM_APLITE
+  // Free the animation
+  property_animation_destroy((PropertyAnimation*) anim);
+#endif
 }
 
-void animate_layer(Layer *layer, GRect *start, GRect *finish, int duration, int delay)
-{
-    //Declare animation
-    PropertyAnimation *anim = property_animation_create_layer_frame(layer, start, finish);
- 
-    //Set characteristics
-    animation_set_duration((Animation*) anim, duration);
-    animation_set_delay((Animation*) anim, delay);
- 
+void animate_layer(Layer *layer, GRect *start, GRect *finish, int duration, int delay) {
+  //Declare animation
+  PropertyAnimation *anim = property_animation_create_layer_frame(layer, start, finish);
+  
+  //Set characteristics
+  animation_set_duration((Animation*) anim, duration);
+  animation_set_delay((Animation*) anim, delay);
+  
+  int anim_type = animation_get_curve((Animation*) anim);
+  APP_LOG(APP_LOG_LEVEL_INFO, "Animation type: %d", anim_type);
+  
+  // You may set handlers to listen for the start and stop events
+  animation_set_handlers((Animation*) anim, (AnimationHandlers) {
+    .stopped = (AnimationStoppedHandler) animation_stopped,
+  }, NULL);
+  
     //Start animation!
     animation_schedule((Animation*) anim);
+}
+
+void amimate_off(int hour, int min){
+  display_layer1 = &GRect(0, 35, 144, 168);
+  off_right_layer1 = &GRect(144, 35, 144, 168);
+
+  display_layer2 = &GRect(0, 70, 144, 168);
+  off_right_layer2 = &GRect(144, 70, 144, 168);
+
+  display_layer3 = &GRect(0, 105, 144, 168);
+  off_right_layer3 = &GRect(144, 105, 144, 168);
+
+  display_meridiem = &GRect(80, 145, 144, 168);
+  off_right_meridiem = &GRect(144, 145, 144, 168);
+  // Slide offscreen to the right
+	animate_layer(text_layer_get_layer(s_time_layer3), display_layer3, off_right_layer3, 250, 400);
+	animate_layer(text_layer_get_layer(s_time_layer2), display_layer2, off_right_layer2, 300, 500);
+  if (min == 59) {
+    animate_layer(text_layer_get_layer(s_time_layer1), display_layer1, off_right_layer1, 350, 600);
+    if (hour == 11) {
+      animate_layer(text_layer_get_layer(s_meridiem_layer), display_meridiem, off_right_meridiem, 400, 700);
+    }
+  }
+}
+
+void amimate_on(int hour, int min){
+  display_layer1 = &GRect(0, 35, 144, 168);
+  off_left_layer1 = &GRect(-144, 35, 144, 168);
+
+  display_layer2 = &GRect(0, 70, 144, 168);
+  off_left_layer2 = &GRect(-144, 70, 144, 168);
+
+  display_layer3 = &GRect(0, 105, 144, 168);
+  off_left_layer3 = &GRect(-144, 105, 144, 168);
+
+  display_meridiem = &GRect(80, 145, 144, 168);
+  off_left_meridiem = &GRect(-144, 145, 144, 168);
+  
+  if (min == 0) {
+      if (hour == 12) {
+        animate_layer(text_layer_get_layer(s_meridiem_layer), off_left_meridiem, display_meridiem, 400, 700);
+      }
+		  animate_layer(text_layer_get_layer(s_time_layer1), off_left_layer1, display_layer1, 250, 400);
+    }
+	  animate_layer(text_layer_get_layer(s_time_layer2), off_left_layer2, display_layer2, 300, 500);
+	  animate_layer(text_layer_get_layer(s_time_layer3), off_left_layer3, display_layer3, 350, 600);
 }
 
 static void update_time() {
@@ -216,34 +268,14 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   int minutes = tick_time->tm_min;
   int hours = tick_time->tm_hour;
   
-//	if(seconds == 59) {
-		// Slide offscreen to the right
-//	  animate_layer(text_layer_get_layer(s_time_layer3), display_layer3, off_right_layer3, 250, 400);
-//	  animate_layer(text_layer_get_layer(s_time_layer2), display_layer2, off_right_layer2, 300, 500);
-//    APP_LOG(APP_LOG_LEVEL_INFO, "Attempted animating off screen of %c %c %c at %d:%d:%d", 
-//            *text_layer_get_text(s_time_layer1), *text_layer_get_text(s_time_layer2), *text_layer_get_text(s_time_layer3),
-//            hours, minutes, seconds);
-//    if (minutes == 59) {
-//      animate_layer(text_layer_get_layer(s_time_layer1), display_layer1, off_right_layer1, 350, 600);
-//      if (hours == 11) {
-//        animate_layer(text_layer_get_layer(s_meridiem_layer), display_meridiem, off_right_meridiem, 400, 700);
-//      }
-//    }
-//	}
-/*	else*/ if(seconds == 0) {
+	if(seconds == 59) {
+    // Slide offscreen to the right
+    amimate_off(hours, minutes);
+	}
+	else if(seconds == 0) {
     update_time();
     // Slide onscreen from the left
-//    if (minutes == 0) {
-//      if (hours == 12) {
-//        animate_layer(text_layer_get_layer(s_meridiem_layer), off_left_meridiem, display_meridiem, 400, 700);
-//      }
-//		  animate_layer(text_layer_get_layer(s_time_layer1), off_left_layer1, display_layer1, 250, 400);
-//    }
-//	  animate_layer(text_layer_get_layer(s_time_layer2), off_left_layer2, display_layer2, 300, 500);
-//	  animate_layer(text_layer_get_layer(s_time_layer3), off_left_layer3, display_layer3, 350, 600);
-//   APP_LOG(APP_LOG_LEVEL_INFO, "Attempted animating to display of %c %c %c at %d:%d:%d", 
-//           *text_layer_get_text(s_time_layer1), *text_layer_get_text(s_time_layer2), *text_layer_get_text(s_time_layer3),
-//           hours, minutes, seconds);
+    amimate_on(hours, minutes);
 	}
   
   
@@ -259,8 +291,6 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
     // Send the message!
     app_message_outbox_send();
   }
-//  APP_LOG(APP_LOG_LEVEL_INFO, "Exiting tick handler at %d:%d:%d",
-//            hours, minutes, seconds);
 }
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
